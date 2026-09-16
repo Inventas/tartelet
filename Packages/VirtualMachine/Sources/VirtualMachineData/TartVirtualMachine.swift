@@ -22,7 +22,18 @@ public final class TartVirtualMachine: VirtualMachine {
     }
 
     public func clone(named newName: String) async throws -> VirtualMachine {
-        try await tart.clone(sourceName: name, newName: newName)
+        do {
+            try await tart.clone(sourceName: name, newName: newName)
+        } catch {
+            // A cancelled CLI can leave a complete or partial clone before returning an error.
+            // Check and remove only the requested clone, outside the cancelled task.
+            try await Task {
+                if try await self.tart.list().contains(newName) {
+                    try await self.tart.delete(name: newName)
+                }
+            }.value
+            throw error
+        }
         return TartVirtualMachine(tart: tart, vmName: newName)
     }
 

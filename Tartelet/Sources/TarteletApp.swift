@@ -20,13 +20,13 @@ struct TarteletApp: App {
             configurationState: ConfigurationState(
                 settingsStore: Composers.settingsStore,
                 virtualMachineSSHCredentialsStore: Composers.virtualMachineSSHCredentialsStore,
-                githubCredentialsStore: Composers.gitHubCredentialsStore
+                accounts: Composers.accounts
             ),
             virtualMachineState: VirtualMachineState(fleet: Composers.fleet, editor: Composers.editor)
         )
         SettingsScene(
             settingsStore: Composers.settingsStore,
-            gitHubCredentialsStore: Composers.gitHubCredentialsStore,
+            accounts: Composers.accounts,
             virtualMachineSSHCredentialsStore: Composers.virtualMachineSSHCredentialsStore,
             virtualMachinesSourceNameRepository: TartVirtualMachineSourceNameRepository(
                 tart: Tart(

@@ -7,11 +7,13 @@ import VirtualMachineDomain
 
 struct SettingsView<SettingsStoreType: SettingsStore & Observable>: View {
     let settingsStore: SettingsStoreType
-    let gitHubCredentialsStore: GitHubCredentialsStore
+    let accounts: GitHubAccountStore
     let virtualMachineSSHCredentialsStore: VirtualMachineSSHCredentialsStore
     let virtualMachinesSourceNameRepository: VirtualMachineSourceNameRepository
     let logExporter: LogExporter
     let isSettingsEnabled: Bool
+    let schedulerStatus: String
+    let schedulerError: String?
 
     var body: some View {
         TabView {
@@ -31,16 +33,17 @@ struct SettingsView<SettingsStoreType: SettingsStore & Observable>: View {
             .tabItem {
                 Label(L10n.Settings.virtualMachine, systemImage: "desktopcomputer")
             }
-            GitHubSettingsView(
-                settingsStore: settingsStore,
-                credentialsStore: gitHubCredentialsStore,
-                isSettingsEnabled: isSettingsEnabled
+            GitHubAccountsView(
+                accounts: accounts,
+                isSettingsEnabled: isSettingsEnabled,
+                schedulerStatus: schedulerStatus,
+                schedulerError: schedulerError
             )
             .tabItem {
                 Label {
                     Text(L10n.Settings.github)
                 } icon: {
-                    Asset.github.swiftUIImage
+                    Image(nsImage: Asset.github.image)
                 }
             }
             GitHubRunnerSettingsView(
@@ -51,7 +54,7 @@ struct SettingsView<SettingsStoreType: SettingsStore & Observable>: View {
                 Label {
                     Text(L10n.Settings.githubRunner)
                 } icon: {
-                    Asset.githubActions.swiftUIImage
+                    Image(nsImage: Asset.githubActions.image)
                 }
             }
             DocumentationSettingsView()
@@ -59,6 +62,6 @@ struct SettingsView<SettingsStoreType: SettingsStore & Observable>: View {
                     Label(L10n.Settings.documentation, systemImage: "text.book.closed")
                 }
         }
-        .frame(minWidth: 450, maxWidth: 650, minHeight: 250, maxHeight: 450)
+        .frame(minWidth: 560, maxWidth: 760, minHeight: 420, maxHeight: 650)
     }
 }

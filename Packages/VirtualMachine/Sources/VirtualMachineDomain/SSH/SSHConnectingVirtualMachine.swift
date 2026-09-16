@@ -123,8 +123,18 @@ private extension SSHConnectingVirtualMachine {
 
     private func connect(to virtualMachine: VirtualMachine) async throws -> StartVirtualMachineResult {
         do {
-            let connection = try await sshClient.connect(to: virtualMachine)
-            try await connection.close()
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    let connection = try await self.sshClient.connect(to: virtualMachine)
+                    try await connection.close()
+                }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(300))
+                    throw SSHConnectionTimeoutError.timedOut
+                }
+                defer { group.cancelAll() }
+                _ = try await group.next()
+            }
             return .success(.sshConnectionCompleted)
         } catch {
             if error is CancellationError {

@@ -51,7 +51,12 @@ public struct VirtualMachineSSHClient<SSHClientType: SSHClient> {
             on: ipAddress,
             maximumAttempts: 3
         )
-        try await connectionHandler.didConnect(to: virtualMachine, through: connection)
+        do {
+            try await connectionHandler.didConnect(to: virtualMachine, through: connection)
+        } catch {
+            try? await connection.close()
+            throw error
+        }
         return connection
     }
 }
@@ -63,7 +68,7 @@ private extension VirtualMachineSSHClient {
         } catch {
             logger.error(
                 "Failed obtaining IP address of virtual machine named \(virtualMachine.name): "
-                + error.localizedDescription
+                    + error.localizedDescription
             )
             throw error
         }
@@ -81,12 +86,12 @@ private extension VirtualMachineSSHClient {
         } catch {
             logger.error(
                 "Attempt \(attempt) out of \(maximumAttempts) to establish an SSH connection"
-                + " to the virtual machine named \(virtualMachineName) failed."
+                    + " to the virtual machine named \(virtualMachineName) failed."
             )
             guard attempt < maximumAttempts else {
                 logger.error(
                     "Last attempt to establish an SSH connection to"
-                    + " virtual machine named \(virtualMachineName) failed."
+                        + " virtual machine named \(virtualMachineName) failed."
                 )
                 throw VirtualMachineSSHClientError.failedConnectingToVirtualMachineAfterRetries
             }
@@ -108,14 +113,14 @@ private extension VirtualMachineSSHClient {
         guard let username = credentialsStore.username else {
             logger.error(
                 "Failed connecting to to \(virtualMachineName) on \(host)."
-                + " The SSH username is not set in Tartelet's settings."
+                    + " The SSH username is not set in Tartelet's settings."
             )
             throw VirtualMachineSSHClientError.missingSSHUsername
         }
         guard let password = credentialsStore.password else {
             logger.error(
                 "Failed connecting to to \(virtualMachineName) on \(host)."
-                + " The SSH password is not set in Tartelet's settings."
+                    + " The SSH password is not set in Tartelet's settings."
             )
             throw VirtualMachineSSHClientError.missingSSHPassword
         }
@@ -124,7 +129,7 @@ private extension VirtualMachineSSHClient {
         } catch {
             logger.error(
                 "Failed connecting to \(virtualMachineName) on \(host): "
-                + error.localizedDescription
+                    + error.localizedDescription
             )
             throw error
         }

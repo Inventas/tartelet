@@ -40,6 +40,9 @@ let package = Package(
             .product(name: "VirtualMachineDomain", package: "VirtualMachine")
         ], resources: [
             .process("Internal/Localizable.strings")
+        ]),
+        .testTarget(name: "SettingsUITests", dependencies: [
+            "SettingsUI"
         ])
     ]
 )

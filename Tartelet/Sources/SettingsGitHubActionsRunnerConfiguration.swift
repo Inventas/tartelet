@@ -6,6 +6,7 @@ struct SettingsGitHubActionsRunnerConfiguration<
     SettingsStoreType: SettingsStore
 >: GitHubActionsRunnerConfiguration {
     let settingsStore: SettingsStoreType
+    let profile: GitHubAccountProfile
     var runnerDisableDefaultLabels: Bool {
         settingsStore.gitHubRunnerDisableDefaultLabels
     }
@@ -13,15 +14,15 @@ struct SettingsGitHubActionsRunnerConfiguration<
         settingsStore.gitHubRunnerDisableUpdates
     }
     var runnerScope: GitHubRunnerScope {
-        settingsStore.githubRunnerScope
+        profile.scope
     }
     var runnerLabels: String {
         settingsStore.gitHubRunnerLabels
     }
     var runnerGroup: String {
-        settingsStore.gitHubRunnerGroup
+        profile.scope == .organization ? profile.runnerGroup : ""
     }
     var runnerName: String {
-        settingsStore.gitHubRunnerName
+        ""
     }
 }

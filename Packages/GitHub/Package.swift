@@ -27,6 +27,7 @@ let package = Package(
         ]),
         .target(name: "GitHubDomain", dependencies: [
             .product(name: "SwiftJWT", package: "Swift-JWT")
-        ])
+        ]),
+        .testTarget(name: "GitHubTests", dependencies: ["GitHubData", "GitHubDomain"])
     ]
 )

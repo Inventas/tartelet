@@ -4,6 +4,8 @@ import ShellDomain
 public struct Tart {
     private let homeProvider: TartHomeProvider
     private let shell: Shell
+    private let cacheNamespace: String?
+    private let executablePath: String?
     private var environment: [String: String]? {
         guard let homeFolderURL = homeProvider.homeFolderURL else {
             return nil
@@ -11,9 +13,18 @@ public struct Tart {
         return ["TART_HOME": homeFolderURL.path(percentEncoded: false)]
     }
 
-    public init(homeProvider: TartHomeProvider, shell: Shell) {
+    public init(homeProvider: TartHomeProvider, shell: Shell, cacheNamespace: String? = nil) {
         self.homeProvider = homeProvider
         self.shell = shell
+        self.cacheNamespace = cacheNamespace
+        self.executablePath = nil
+    }
+
+    init(homeProvider: TartHomeProvider, shell: Shell, executablePath: String) {
+        self.homeProvider = homeProvider
+        self.shell = shell
+        self.cacheNamespace = nil
+        self.executablePath = executablePath
     }
 
     public func clone(sourceName: String, newName: String) async throws {
@@ -23,11 +34,14 @@ public struct Tart {
     public func run(name: String) async throws {
         let homeFolderURL = homeProvider.homeFolderURL ??
             FileManager.default.homeDirectoryForCurrentUser.appending(component: ".tart")
-        let cacheFolder = homeFolderURL.appendingPathComponent("cache")
+        var cacheFolder = homeFolderURL.appendingPathComponent("cache")
+        if let cacheNamespace {
+            cacheFolder = cacheFolder.appendingPathComponent("accounts").appendingPathComponent(cacheNamespace)
+        }
         if !FileManager.default.fileExists(atPath: cacheFolder.path) {
             try FileManager.default.createDirectory(atPath: cacheFolder.path, withIntermediateDirectories: true)
         }
-        var runArgs =  ["run", "--dir=cache:\(cacheFolder.path())"]
+        var runArgs = ["run", "--dir=cache:\(cacheFolder.path())"]
         if let tartRunOptions = ProcessInfo.processInfo.environment["TARTELET_RUN_OPTIONS"] {
             runArgs.append(tartRunOptions)
         }
@@ -54,7 +68,7 @@ private extension Tart {
     @discardableResult
     private func executeCommand(withArguments arguments: [String]) async throws -> String {
         let locator = TartLocator(shell: shell)
-        let filePath = try locator.locate()
+        let filePath = try executablePath ?? locator.locate()
         if let environment {
             return try await shell.runExecutable(
                 atPath: filePath,

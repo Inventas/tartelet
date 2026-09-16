@@ -24,10 +24,11 @@ public final class RSAPrivateKey {
     }
 
     public convenience init?(_ data: Data) {
-        guard let string = String(data: data, encoding: .utf8) else {
-            return nil
+        if let string = String(data: data, encoding: .utf8), string.contains("-----BEGIN") {
+            self.init(string)
+        } else {
+            self.init(body: data)
         }
-        self.init(string)
     }
 
     public convenience init?(_ string: String) {

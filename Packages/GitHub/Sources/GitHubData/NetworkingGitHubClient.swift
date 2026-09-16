@@ -9,7 +9,8 @@ private enum NetworkingGitHubClientError: LocalizedError {
     case appIDUnavailable
     case privateKeyUnavailable
     case appIsNotInstalled
-    case downloadNotFound(os: String, architecture: String)
+    case downloadNotFound(os:
+        String, architecture: String)
 
     var errorDescription: String? {
         switch self {
@@ -33,10 +34,11 @@ private enum NetworkingGitHubClientError: LocalizedError {
 
 public final class NetworkingGitHubClient: GitHubClient {
     private let baseURL = URL(string: "https://api.github.com")!
-    private let credentialsStore: GitHubCredentialsStore
+    private let credentialsStore: GitHubCredentials
     private let networkingService: NetworkingService
+    private var registrationMayExist = false
 
-    public init(credentialsStore: GitHubCredentialsStore, networkingService: NetworkingService) {
+    public init(credentialsStore: GitHubCredentials, networkingService: NetworkingService) {
         self.credentialsStore = credentialsStore
         self.networkingService = networkingService
     }
@@ -60,6 +62,24 @@ public final class NetworkingGitHubClient: GitHubClient {
         }
     }
 
+    public func removeRunner(named name: String, runnerScope: GitHubRunnerScope) async throws {
+        guard registrationMayExist else {
+            return
+        }
+        let token = try await getAppAccessToken(runnerScope: runnerScope)
+        let registrationPath = try await runnerScope.runnerRegistrationPath(using: credentialsStore)
+        let path = String(registrationPath.dropLast("/registration-token".count))
+        let api = GitHubAPI(networking: networkingService)
+        let runners = try await api.pages(GitHubRunnerPage.self, path: path, token: token, items: \.runners)
+        for runner in runners where runner.name == name {
+            var request = api.request(path: "\(path)/\(runner.id)", token: token)
+            request.httpMethod = "DELETE"
+            let response = await networkingService.data(from: request)
+            if response.httpURLResponse?.statusCode != 404 { _ = try response.map(\.value) }
+        }
+        registrationMayExist = false
+    }
+
     public func getRunnerDownloadURL(
         with appAccessToken: GitHubAppAccessToken,
         runnerScope: GitHubRunnerScope
@@ -76,8 +96,8 @@ public final class NetworkingGitHubClient: GitHubClient {
     }
 
     public func getRunnerRegistrationToken(
-      with appAccessToken: GitHubAppAccessToken,
-      runnerScope: GitHubRunnerScope
+        with appAccessToken: GitHubAppAccessToken,
+        runnerScope: GitHubRunnerScope
     ) async throws -> GitHubRunnerRegistrationToken {
         let url = try await baseURL.appending(path: runnerScope.runnerRegistrationPath(using: credentialsStore))
         var request = URLRequest(url: url).addingBearerToken(appAccessToken.rawValue)
@@ -86,25 +106,34 @@ public final class NetworkingGitHubClient: GitHubClient {
             IntermediateGitHubRunnerRegistrationToken.self,
             from: request
         ).map { parameters in
-            GitHubRunnerRegistrationToken(parameters.value.token)
+            self.registrationMayExist = true
+            return GitHubRunnerRegistrationToken(parameters.value.token)
         }
     }
 }
 
 private extension NetworkingGitHubClient {
     private func getAppInstallation(runnerScope: GitHubRunnerScope) async throws -> GitHubAppInstallation {
-        let url = baseURL.appending(path: "/app/installations")
-        let token = try await getAppJWTToken()
-        let request = URLRequest(url: url).addingBearerToken(token)
-        let appInstallations = try await networkingService.load(
-            [GitHubAppInstallation].self,
-            from: request
-        ).map(\.value)
-        let loginName = await runnerScope.runnerLogin(using: credentialsStore)
-        guard let appInstallation = appInstallations.first(where: { $0.account.login == loginName }) else {
-            throw NetworkingGitHubClientError.appIsNotInstalled
+        let path: String
+        switch runnerScope {
+        case .organization:
+            guard let login = credentialsStore.organizationName else {
+                throw NetworkingGitHubClientError.organizationNameUnavailable
+            }
+            path = "/orgs/\(login)/installation"
+        case .repo:
+            guard let login = credentialsStore.ownerName else {
+                throw NetworkingGitHubClientError.repositoryOwnerNameUnavailable
+            }
+            if let repository = credentialsStore.repositoryName, !repository.isEmpty {
+                path = "/repos/\(login)/\(repository)/installation"
+            } else {
+                path = "/users/\(login)/installation"
+            }
         }
-        return appInstallation
+        let token = try await getAppJWTToken()
+        let request = URLRequest(url: baseURL.appending(path: path)).addingBearerToken(token)
+        return try await networkingService.load(GitHubAppInstallation.self, from: request).map(\.value)
     }
 
     private func getAppJWTToken() async throws -> String {
@@ -127,7 +156,7 @@ private extension URLRequest {
 }
 
 private extension GitHubRunnerScope {
-    func runnerRegistrationPath(using credentialsStore: GitHubCredentialsStore) async throws -> String {
+    func runnerRegistrationPath(using credentialsStore: GitHubCredentials) async throws -> String {
         switch self {
         case .organization:
             guard let organizationName = credentialsStore.organizationName else {
@@ -146,7 +175,7 @@ private extension GitHubRunnerScope {
         }
     }
 
-    func runnerDownloadPath(using credentialsStore: GitHubCredentialsStore) async throws -> String {
+    func runnerDownloadPath(using credentialsStore: GitHubCredentials) async throws -> String {
         switch self {
         case .organization:
             guard let organizationName = credentialsStore.organizationName else {
@@ -164,7 +193,7 @@ private extension GitHubRunnerScope {
         }
     }
 
-    func runnerLogin(using credentialsStore: GitHubCredentialsStore) async -> String? {
+    func runnerLogin(using credentialsStore: GitHubCredentials) async -> String? {
         switch self {
         case .organization:
             return credentialsStore.organizationName

@@ -3,6 +3,8 @@ import VirtualMachineDomain
 
 public enum ConfigurationState {
     case ready
+    case missingGitHubAccounts
+    case invalidGitHubAccounts
     case missingVirtualMachine
     case missingSSHCredentials
     case missingGitHubAppId
@@ -14,7 +16,7 @@ public enum ConfigurationState {
     public init(
         settingsStore: some SettingsStore,
         virtualMachineSSHCredentialsStore: VirtualMachineSSHCredentialsStore,
-        githubCredentialsStore: GitHubCredentialsStore
+        accounts: GitHubAccountStore
     ) {
         if case .unknown = settingsStore.virtualMachine {
             self = .missingVirtualMachine
@@ -22,19 +24,15 @@ public enum ConfigurationState {
             self = .missingSSHCredentials
         } else if (virtualMachineSSHCredentialsStore.password ?? "").isEmpty {
             self = .missingSSHCredentials
-        } else if (githubCredentialsStore.appId ?? "").isEmpty {
-            self = .missingGitHubAppId
-        } else if githubCredentialsStore.privateKey == nil {
-            self = .missingGitHubPrivateKey
-        } else if settingsStore.githubRunnerScope == .organization
-                    && (githubCredentialsStore.organizationName ?? "").isEmpty {
-            self = .missingGitHubOrganizationName
-        } else if settingsStore.githubRunnerScope == .repo
-                    && (githubCredentialsStore.ownerName ?? "").isEmpty {
-            self = .missingGitHubOwnerName
-        } else if settingsStore.githubRunnerScope == .repo
-                    && (githubCredentialsStore.repositoryName ?? "").isEmpty {
-            self = .missingGitHubRepositoryName
+        } else if accounts.storageError != nil {
+            self = .invalidGitHubAccounts
+        } else if !accounts.profiles.contains(where: { $0.isEnabled }) {
+            self = .missingGitHubAccounts
+        } else if accounts.profiles.filter({ $0.isEnabled }).contains(where: { profile in
+            profile.validationMessage != nil || (accounts.credentials(for: profile).appId ?? "").isEmpty
+                || accounts.credentials(for: profile).privateKey == nil
+        }) {
+            self = .invalidGitHubAccounts
         } else {
             self = .ready
         }
@@ -44,6 +42,10 @@ public enum ConfigurationState {
 public extension ConfigurationState {
     var shortInstruction: String {
         switch self {
+        case .missingGitHubAccounts:
+            "Add and enable a GitHub account in Settings."
+        case .invalidGitHubAccounts:
+            "Check the GitHub accounts and credentials in Settings."
         case .ready:
             L10n.Settings.ConfigurationState.Ready.shortInstruction
         case .missingVirtualMachine:

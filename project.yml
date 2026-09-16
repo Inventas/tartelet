@@ -16,6 +16,10 @@ targets:
           defaultPlan: true
     type: application
     platform: macOS
+    settings:
+      base:
+        TARTELET_BUNDLE_IDENTIFIER: dk.shape.Tartelet
+        PRODUCT_BUNDLE_IDENTIFIER: $(TARTELET_BUNDLE_IDENTIFIER)
     sources: [Tartelet]
     postCompileScripts:
     - name: Run SwiftLint

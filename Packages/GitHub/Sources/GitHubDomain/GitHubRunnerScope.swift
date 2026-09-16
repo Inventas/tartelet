@@ -1,4 +1,4 @@
-public enum GitHubRunnerScope: String, CaseIterable {
+public enum GitHubRunnerScope: String, CaseIterable, Codable, Sendable {
     case organization
     case repo
 }
