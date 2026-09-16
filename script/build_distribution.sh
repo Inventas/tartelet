@@ -53,12 +53,20 @@ fi
 xcodebuild -project Tartelet.xcodeproj -scheme Tartelet -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$ROOT_DIR/build/DistributionDerivedData" \
   -archivePath "$ARCHIVE" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
-  "PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID" "MARKETING_VERSION=$VERSION" "CURRENT_PROJECT_VERSION=$BUILD_NUMBER" \
+  "TARTELET_BUNDLE_IDENTIFIER=$BUNDLE_ID" "MARKETING_VERSION=$VERSION" "CURRENT_PROJECT_VERSION=$BUILD_NUMBER" \
   "INFOPLIST_KEY_TarteletSourceRevision=$REVISION" "${SIGNING[@]}" archive
 
 ditto "$ARCHIVE/Products/Applications/Tartelet.app" "$APP"
 codesign --verify --deep --strict "$APP"
 test "$(lipo -archs "$APP/Contents/MacOS/Tartelet")" = arm64
+# Resource bundles need their own identifiers for image and localization lookup.
+while IFS= read -r -d '' RESOURCE_INFO; do
+  RESOURCE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$RESOURCE_INFO")
+  if [[ "$RESOURCE_ID" == "$BUNDLE_ID" ]]; then
+    echo "Resource bundle uses the app identifier: $RESOURCE_INFO" >&2
+    exit 1
+  fi
+done < <(find "$APP/Contents/Resources" -path '*.bundle/Contents/Info.plist' -print0)
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
   ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUTPUT_DIR/notarization-upload.zip"

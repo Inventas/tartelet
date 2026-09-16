@@ -37,7 +37,7 @@ if [[ -n "${TARTELET_DEVELOPMENT_TEAM:-}" ]]; then
 fi
 xcodebuild -project Tartelet.xcodeproj -scheme Tartelet -configuration Debug \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DERIVED_DATA" \
-  "PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID" "${SIGNING[@]}" build
+  "TARTELET_BUNDLE_IDENTIFIER=$BUNDLE_ID" "${SIGNING[@]}" build
 
 case "$MODE" in
   --build-only) ;;
