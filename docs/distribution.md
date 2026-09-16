@@ -24,7 +24,7 @@ Install Xcode and XcodeGen, then run from a clean checkout:
 
 Set `XCODEGEN` to an executable path if it is not on `PATH`. The script creates a Release archive, an app, a ZIP, a SHA-256 checksum, and `BUILD-INFO.txt` under a new `build/Distribution/` directory. `build/Distribution/latest-path.txt` identifies the last successful output. It does not stop the development app or start VMs.
 
-The default output is an ad-hoc signed test build. Set `TARTELET_VERSION`, `TARTELET_BUILD_NUMBER`, `TARTELET_RELEASE_LABEL`, or `TARTELET_BUNDLE_ID` when a different version or app identifier is needed. The source commit is recorded in the app and build information. Builds from a modified checkout are marked `dirty`; publish builds from a clean commit.
+The default output is an ad-hoc signed test build. Set `TARTELET_VERSION`, `TARTELET_BUILD_NUMBER`, `TARTELET_RELEASE_LABEL`, or `TARTELET_BUNDLE_ID` when a different version or app identifier is needed. The source commit is recorded in `BUILD-INFO.txt`. Builds from a modified checkout are marked `dirty`; publish builds from a clean commit.
 
 ## Developer ID signing and notarization
 

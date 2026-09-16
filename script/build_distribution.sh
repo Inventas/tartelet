@@ -54,7 +54,7 @@ xcodebuild -project Tartelet.xcodeproj -scheme Tartelet -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$ROOT_DIR/build/DistributionDerivedData" \
   -archivePath "$ARCHIVE" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
   "TARTELET_BUNDLE_IDENTIFIER=$BUNDLE_ID" "MARKETING_VERSION=$VERSION" "CURRENT_PROJECT_VERSION=$BUILD_NUMBER" \
-  "INFOPLIST_KEY_TarteletSourceRevision=$REVISION" "${SIGNING[@]}" archive
+  "${SIGNING[@]}" archive
 
 ditto "$ARCHIVE/Products/Applications/Tartelet.app" "$APP"
 codesign --verify --deep --strict "$APP"
