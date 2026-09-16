@@ -9,17 +9,11 @@ struct GitHubRunnerSettingsView<SettingsStoreType: SettingsStore & Observable>: 
     var body: some View {
         Form {
             Section {
-                TextField(
-                    L10n.Settings.GithubRunner.name,
-                    text: $settingsStore.gitHubRunnerName,
-                    prompt: Text(githubRunnerNamePrompt)
-                )
-                .disabled(!isSettingsEnabled)
                 Toggle(isOn: $settingsStore.gitHubRunnerDisableDefaultLabels) {
                     Text(L10n.Settings.GithubRunner.disableDefaultLabels)
                 }
                 .disabled(!isSettingsEnabled)
-                
+
                 TextField(
                     L10n.Settings.GithubRunner.labels,
                     text: $settingsStore.gitHubRunnerLabels,
@@ -27,15 +21,10 @@ struct GitHubRunnerSettingsView<SettingsStoreType: SettingsStore & Observable>: 
                 )
                 .disabled(!isSettingsEnabled)
             } footer: {
-                Text(L10n.Settings.GithubRunner.Labels.footer)
-            }
-            Section {
-                TextField(
-                    L10n.Settings.GithubRunner.group,
-                    text: $settingsStore.gitHubRunnerGroup,
-                    prompt: Text(L10n.Settings.GithubRunner.Group.prompt)
-                )
-                .disabled(!isSettingsEnabled)
+                Text("""
+                These labels apply to all accounts. Only queued jobs whose labels match this runner can start a VM. \
+                Runner names are generated automatically.
+                """)
             }
             Section {
                 Toggle(isOn: $settingsStore.gitHubRunnerDisableUpdates) {
@@ -48,12 +37,4 @@ struct GitHubRunnerSettingsView<SettingsStoreType: SettingsStore & Observable>: 
         .formStyle(.grouped)
     }
 
-    private var githubRunnerNamePrompt: String {
-        switch settingsStore.virtualMachine {
-            case .unknown:
-                return L10n.Settings.GithubRunner.Name.prompt
-            case .virtualMachine(let name):
-                return name
-        }
-    }
 }

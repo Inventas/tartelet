@@ -7,53 +7,79 @@ import LoggingDomain
 import NetworkingData
 import Observation
 import SettingsData
+import SettingsDomain
 import ShellData
 import SSHData
 import VirtualMachineData
 import VirtualMachineDomain
 
+@MainActor
 enum Composers {
     static let settingsStore = AppStorageSettingsStore()
 
+    static var configurationState: ConfigurationState {
+        ConfigurationState(settingsStore: settingsStore,
+                           virtualMachineSSHCredentialsStore: virtualMachineSSHCredentialsStore, accounts: accounts)
+    }
+
+    static let accounts: KeychainGitHubAccountStore = {
+        let store = KeychainGitHubAccountStore { id in
+            KeychainGitHubCredentialsStore(
+                keychain: keychain(logger: logger(subsystem: "GitHubAccounts")),
+                serviceName: "Tartelet GitHub Account \(id.uuidString)",
+                privateKeyTag: "github.accounts.\(id.uuidString).privateKey"
+            )
+        }
+        store.migrateLegacyAccount(
+            credentials: gitHubCredentialsStore, scope: settingsStore.githubRunnerScope,
+            privateKeyName: settingsStore.gitHubPrivateKeyName, runnerGroup: settingsStore.gitHubRunnerGroup
+        )
+        return store
+    }()
+
+    static let networking = URLSessionNetworkingService(logger: logger(subsystem: "GitHub"))
+
     static let fleet = VirtualMachineFleet(
         logger: logger(subsystem: "VirtualMachineFleet"),
-        baseVirtualMachine: SSHConnectingVirtualMachine(
+        queue: NetworkingGitHubJobQueue(
+            accounts: accounts, networking: networking,
+            runnerLabels: { settingsStore.gitHubRunnerLabels },
+            defaultLabels: { !settingsStore.gitHubRunnerDisableDefaultLabels }
+        ),
+        makeVirtualMachine: makeVirtualMachine
+    )
+
+    private static func makeVirtualMachine(for job: GitHubQueuedJob) throws -> VirtualMachineDomain.VirtualMachine {
+        let credentials = SnapshotGitHubCredentials(
+            profile: job.profile, repository: job.repository, credentials: accounts.credentials(for: job.profile)
+        )
+        let client = NetworkingGitHubClient(credentialsStore: credentials, networkingService: networking)
+        let machine = SSHConnectingVirtualMachine(
             logger: logger(subsystem: "SSHConnectingVirtualMachine"),
             virtualMachine: SettingsVirtualMachine(
-                tart: Tart(
-                    homeProvider: SettingsTartHomeProvider(
-                        settingsStore: settingsStore
-                    ),
-                    shell: ProcessShell()
-                ),
+                tart: Tart(homeProvider: SettingsTartHomeProvider(settingsStore: settingsStore),
+                           shell: ProcessShell(), cacheNamespace: job.profile.id.uuidString),
                 settingsStore: settingsStore
             ),
             sshClient: VirtualMachineSSHClient(
                 logger: logger(subsystem: "VirtualMachineSSHClient"),
-                client: CitadelSSHClient(
-                    logger: logger(subsystem: "CitadelSSHClient")
-                ),
+                client: CitadelSSHClient(logger: logger(subsystem: "CitadelSSHClient")),
                 ipAddressReader: RetryingVirtualMachineIPAddressReader(),
                 credentialsStore: virtualMachineSSHCredentialsStore,
                 connectionHandler: CompositeVirtualMachineSSHConnectionHandler([
                     PostBootScriptSSHConnectionHandler(),
                     GitHubActionsRunnerSSHConnectionHandler(
-                        logger: logger(subsystem: "GitHubActionsRunnerSSHConnectionHandler"),
-                        client: NetworkingGitHubClient(
-                            credentialsStore: gitHubCredentialsStore,
-                            networkingService: URLSessionNetworkingService(
-                                logger: logger(subsystem: "URLSessionNetworkingService")
-                            )
-                        ),
-                        credentialsStore: gitHubCredentialsStore,
+                        logger: logger(subsystem: "GitHubActionsRunner"), client: client,
+                        credentialsStore: credentials,
                         configuration: SettingsGitHubActionsRunnerConfiguration(
-                            settingsStore: settingsStore
+                            settingsStore: settingsStore, profile: job.profile
                         )
                     )
                 ])
             )
         )
-    )
+        return RegisteredRunnerVirtualMachine(machine: machine, client: client, scope: job.profile.scope)
+    }
 
     static let editor = VirtualMachineEditor(
         logger: logger(subsystem: "VirtualMachineEditor"),
@@ -94,6 +120,6 @@ enum Composers {
 
 private extension Composers {
     private static func keychain(logger: Logger) -> Keychain {
-        Keychain(logger: logger, accessGroup: "566MC7D8D4.dk.shape.Tartelet")
+        Keychain(logger: logger)
     }
 }

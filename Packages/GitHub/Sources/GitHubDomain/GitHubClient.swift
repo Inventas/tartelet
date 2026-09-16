@@ -10,4 +10,5 @@ public protocol GitHubClient {
         with appAccessToken: GitHubAppAccessToken,
         runnerScope: GitHubRunnerScope
     ) async throws -> URL
+    func removeRunner(named name: String, runnerScope: GitHubRunnerScope) async throws
 }

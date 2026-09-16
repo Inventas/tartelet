@@ -1,8 +1,10 @@
 import AppKit
 import Foundation
+import SettingsDomain
 import SettingsUI
 import VirtualMachineDomain
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsStore = Composers.settingsStore
     private let dock = Dock()
@@ -13,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         beginObservingAppIconVisibility()
-        if Composers.settingsStore.startVirtualMachinesOnLaunch {
+        if Composers.settingsStore.startVirtualMachinesOnLaunch && Composers.configurationState == .ready {
             Composers.fleet.start(numberOfMachines: Composers.settingsStore.numberOfVirtualMachines)
         }
 
@@ -32,7 +34,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Composers.editor.stop()
-        Composers.fleet.stop()
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard Composers.fleet.isStarted else {
+            return .terminateNow
+        }
+        Composers.fleet.stopImmediately()
+        Task { @MainActor in
+            while Composers.fleet.isStarted {
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 

@@ -7,7 +7,7 @@ import VirtualMachineDomain
 
 public struct SettingsScene<SettingsStoreType: SettingsStore & Observable>: Scene {
     private let settingsStore: SettingsStoreType
-    private let gitHubCredentialsStore: GitHubCredentialsStore
+    private let accounts: GitHubAccountStore
     private let virtualMachineSSHCredentialsStore: VirtualMachineSSHCredentialsStore
     private let virtualMachinesSourceNameRepository: VirtualMachineSourceNameRepository
     private let logExporter: LogExporter
@@ -19,7 +19,7 @@ public struct SettingsScene<SettingsStoreType: SettingsStore & Observable>: Scen
 
     public init(
         settingsStore: SettingsStoreType,
-        gitHubCredentialsStore: GitHubCredentialsStore,
+        accounts: GitHubAccountStore,
         virtualMachineSSHCredentialsStore: VirtualMachineSSHCredentialsStore,
         virtualMachinesSourceNameRepository: VirtualMachineSourceNameRepository,
         logExporter: LogExporter,
@@ -27,7 +27,7 @@ public struct SettingsScene<SettingsStoreType: SettingsStore & Observable>: Scen
         editor: VirtualMachineEditor
     ) {
         self.settingsStore = settingsStore
-        self.gitHubCredentialsStore = gitHubCredentialsStore
+        self.accounts = accounts
         self.virtualMachineSSHCredentialsStore = virtualMachineSSHCredentialsStore
         self.virtualMachinesSourceNameRepository = virtualMachinesSourceNameRepository
         self.logExporter = logExporter
@@ -39,11 +39,13 @@ public struct SettingsScene<SettingsStoreType: SettingsStore & Observable>: Scen
         Settings {
             SettingsView(
                 settingsStore: settingsStore,
-                gitHubCredentialsStore: gitHubCredentialsStore,
+                accounts: accounts,
                 virtualMachineSSHCredentialsStore: virtualMachineSSHCredentialsStore,
                 virtualMachinesSourceNameRepository: virtualMachinesSourceNameRepository,
                 logExporter: logExporter,
-                isSettingsEnabled: isSettingsEnabled
+                isSettingsEnabled: isSettingsEnabled,
+                schedulerStatus: fleet.statusMessage,
+                schedulerError: fleet.lastError
             )
         }
     }

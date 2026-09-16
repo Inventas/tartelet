@@ -11,10 +11,6 @@ public final class KeychainGitHubCredentialsStore: GitHubCredentialsStore {
         static let appId = "github.credentials.appId"
     }
 
-    private enum KeyTag {
-        static let privateKey = "github.credentials.privateKey"
-    }
-
     public var organizationName: String? {
         access(keyPath: \.organizationName)
         return keychain.password(
@@ -45,15 +41,17 @@ public final class KeychainGitHubCredentialsStore: GitHubCredentialsStore {
     }
     public var privateKey: Data? {
         access(keyPath: \.privateKey)
-        return keychain.key(withTag: KeyTag.privateKey)?.data
+        return keychain.key(withTag: privateKeyTag)?.data
     }
 
     private let keychain: Keychain
     private let serviceName: String
+    private let privateKeyTag: String
 
-    public init(keychain: Keychain, serviceName: String) {
+    public init(keychain: Keychain, serviceName: String, privateKeyTag: String = "github.credentials.privateKey") {
         self.keychain = keychain
         self.serviceName = serviceName
+        self.privateKeyTag = privateKeyTag
     }
 
     public func setOrganizationName(_ organizationName: String?) {
@@ -124,9 +122,9 @@ public final class KeychainGitHubCredentialsStore: GitHubCredentialsStore {
     public func setPrivateKey(_ privateKeyData: Data?) {
         withMutation(keyPath: \.privateKey) {
             if let privateKeyData, let key = RSAPrivateKey(privateKeyData) {
-                _ = keychain.setKey(key, withTag: KeyTag.privateKey)
+                _ = keychain.setKey(key, withTag: privateKeyTag)
             } else {
-                keychain.removeKey(withTag: KeyTag.privateKey)
+                keychain.removeKey(withTag: privateKeyTag)
             }
         }
     }

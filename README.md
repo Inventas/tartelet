@@ -1,3 +1,5 @@
+> **Inventas fork:** Supports multiple GitHub organizations and personal accounts in one app, with automatic sharing of both VM slots. See [multi-account setup, scheduling, and development](docs/multiple-accounts.md) and [building or installing a distributable app](docs/distribution.md).
+
 ![Hero artwork](artwork.jpg)
 
 ## 👋 Welcome to Tartelet - a macOS app that launches self-hosted GitHub Actions runners in virtual machines using [Tart](https://github.com/cirruslabs/tart).
